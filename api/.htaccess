@@ -1,0 +1,12 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Block ALL URLs that contain /public/ anywhere
+    RewriteCond %{THE_REQUEST} /public/ [NC]
+    RewriteRule ^ - [F,L]
+
+    # Redirect everything else to public folder
+    RewriteCond %{REQUEST_URI} !^/public/
+    RewriteRule ^(.*)$ public/$1 [L,QSA]
+
+</IfModule>
