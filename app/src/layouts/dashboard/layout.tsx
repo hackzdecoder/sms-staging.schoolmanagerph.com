@@ -72,23 +72,23 @@ export function DashboardLayout({
   const { counts, newNotifications, clearNewNotifications } = useNotificationPolling();
 
   useEffect(() => {
-    if (isWebToNative) {
-      registerForPush();
-      
-      // Try to set user ID if user data is in localStorage
-      const userStr = localStorage.getItem('user');
-      if (userStr) {
-        try {
-          const user = JSON.parse(userStr);
-          if (user.user_id) {
-            setUserForPush(user.user_id);
-          }
-        } catch (e) {
-          console.error("Error parsing user from localStorage", e);
+    // WebToNative often injects window.WTN *after* React loads. 
+    // We must call registerForPush unconditionally and let it wait for the SDK.
+    registerForPush();
+    
+    // Try to set user ID if user data is in localStorage
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        if (user.user_id) {
+          setUserForPush(user.user_id);
         }
+      } catch (e) {
+        console.error("Error parsing user from localStorage", e);
       }
     }
-  }, [isWebToNative]);
+  }, []);
 
   const renderHeader = () => {
     const headerSlotProps: HeaderSectionProps['slotProps'] = {
