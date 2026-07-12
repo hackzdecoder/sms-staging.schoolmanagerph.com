@@ -44,7 +44,10 @@ export function useWebToNative() {
         retries++;
         if (retries >= 10) {
           clearInterval(checkWtn);
-          alert("Error: WebToNative SDK never loaded after 10 seconds.");
+          
+          const wtnType = typeof window.WTN;
+          const wtnKeys = window.WTN ? Object.keys(window.WTN).join(",") : "none";
+          alert(`Error: WebToNative SDK never loaded. Type: ${wtnType}, Keys: ${wtnKeys}`);
         }
       }
     }, 1000);
