@@ -19,32 +19,35 @@ export function useWebToNative() {
 
   // Register device for push notifications
   const registerForPush = async () => {
-    // DEBUG: See if the app even recognizes WebToNative or OneSignal
-    alert("Debug Check -> isWebToNative: " + isWebToNative + " | hasOneSignal: " + !!window.WTN?.OneSignal);
-
-    if (!isWebToNative || !window.WTN?.OneSignal) return;
-
-    try {
-      // Wait 3 seconds to ensure OneSignal SDK is fully loaded before checking
-      setTimeout(async () => {
-        // Get the device's OneSignal player ID from WebToNative
-        const playerId = window.WTN?.OneSignal?.getPlayerId();
+    let retries = 0;
+    
+    // WebToNative SDK takes time to inject into the app. We check every 1 second.
+    const checkWtn = setInterval(async () => {
+      if (typeof window !== 'undefined' && window.WTN?.OneSignal) {
+        clearInterval(checkWtn);
         
-        // DEBUG: Pop up an alert on the phone so we can see if it's actually working
-        alert("Debug: OneSignal Player ID is: " + (playerId ? playerId : "EMPTY/NULL"));
+        try {
+          const playerId = window.WTN.OneSignal.getPlayerId();
+          alert("Success! Found Player ID: " + (playerId ? playerId : "NULL"));
 
-        if (playerId) {
-          // Send it to our backend to register the device
-          await api.post('/notifications/register-device', {
-            player_id: playerId,
-            platform: navigator.userAgent.toLowerCase().includes('android') ? 'android' : 
-                      navigator.userAgent.toLowerCase().includes('iphone') ? 'ios' : 'web'
-          });
+          if (playerId) {
+            await api.post('/notifications/register-device', {
+              player_id: playerId,
+              platform: navigator.userAgent.toLowerCase().includes('android') ? 'android' : 
+                        navigator.userAgent.toLowerCase().includes('iphone') ? 'ios' : 'web'
+            });
+          }
+        } catch (error) {
+          console.error('Error registering device:', error);
         }
-      }, 3000);
-    } catch (error) {
-      console.error('Error registering device for push notifications:', error);
-    }
+      } else {
+        retries++;
+        if (retries >= 10) {
+          clearInterval(checkWtn);
+          alert("Error: WebToNative SDK never loaded after 10 seconds.");
+        }
+      }
+    }, 1000);
   };
 
   // Associate device with specific user for targeted push
