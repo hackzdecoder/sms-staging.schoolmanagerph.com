@@ -28,7 +28,6 @@ export function useWebToNative() {
         
         try {
           const playerId = await window.WTN.OneSignal.getPlayerId();
-          alert("Success! Found Player ID: " + (playerId ? playerId : "NULL"));
 
           if (playerId) {
             await api.post('/notifications/register-device', {
@@ -44,10 +43,7 @@ export function useWebToNative() {
         retries++;
         if (retries >= 10) {
           clearInterval(checkWtn);
-          
-          const wtnType = typeof window.WTN;
-          const wtnKeys = window.WTN ? Object.keys(window.WTN).join(",") : "none";
-          alert(`Error: WebToNative SDK never loaded. Type: ${wtnType}, Keys: ${wtnKeys}`);
+          console.warn("WebToNative SDK never loaded after 10 seconds.");
         }
       }
     }, 1000);
