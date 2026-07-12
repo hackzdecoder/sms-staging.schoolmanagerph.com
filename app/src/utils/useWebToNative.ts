@@ -22,17 +22,23 @@ export function useWebToNative() {
     if (!isWebToNative || !window.WTN?.OneSignal) return;
 
     try {
-      // Get the device's OneSignal player ID from WebToNative
-      const playerId = window.WTN.OneSignal.getPlayerId();
-      
-      if (playerId) {
-        // Send it to our backend to register the device
-        await api.post('/notifications/register-device', {
-          player_id: playerId,
-          platform: navigator.userAgent.toLowerCase().includes('android') ? 'android' : 
-                    navigator.userAgent.toLowerCase().includes('iphone') ? 'ios' : 'web'
-        });
-      }
+      // Wait 3 seconds to ensure OneSignal SDK is fully loaded before checking
+      setTimeout(async () => {
+        // Get the device's OneSignal player ID from WebToNative
+        const playerId = window.WTN?.OneSignal?.getPlayerId();
+        
+        // DEBUG: Pop up an alert on the phone so we can see if it's actually working
+        alert("Debug: OneSignal Player ID is: " + (playerId ? playerId : "EMPTY/NULL"));
+
+        if (playerId) {
+          // Send it to our backend to register the device
+          await api.post('/notifications/register-device', {
+            player_id: playerId,
+            platform: navigator.userAgent.toLowerCase().includes('android') ? 'android' : 
+                      navigator.userAgent.toLowerCase().includes('iphone') ? 'ios' : 'web'
+          });
+        }
+      }, 3000);
     } catch (error) {
       console.error('Error registering device for push notifications:', error);
     }
