@@ -51,15 +51,23 @@ export function useWebToNative() {
 
   // Associate device with specific user for targeted push
   const setUserForPush = (userId: string) => {
-    if (!isWebToNative || !window.WTN?.OneSignal) return;
-    
-    try {
-      window.WTN.OneSignal.setExternalUserId(userId);
-      // Re-register device so backend knows the current user mapping
-      registerForPush();
-    } catch (error) {
-      console.error('Error setting external user ID for push:', error);
-    }
+    let retries = 0;
+    const checkWtn = setInterval(() => {
+      if (typeof window !== 'undefined' && window.WTN?.OneSignal) {
+        clearInterval(checkWtn);
+        try {
+          window.WTN.OneSignal.setExternalUserId(userId);
+        } catch (error) {
+          console.error('Error setting external user ID for push:', error);
+        }
+      } else {
+        retries++;
+        if (retries >= 10) {
+          clearInterval(checkWtn);
+          console.warn("WTN failed to load for setUserForPush after 10 seconds.");
+        }
+      }
+    }, 1000);
   };
 
   // Unregister user on logout
