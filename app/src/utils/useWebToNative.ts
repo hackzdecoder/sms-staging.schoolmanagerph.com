@@ -6,7 +6,7 @@ declare global {
   interface Window {
     WTN?: {
       OneSignal?: {
-        getPlayerId: () => string;
+        getPlayerId: () => Promise<string>;
         setExternalUserId: (userId: string) => void;
         removeExternalUserId: () => void;
       };
@@ -27,7 +27,7 @@ export function useWebToNative() {
         clearInterval(checkWtn);
         
         try {
-          const playerId = window.WTN.OneSignal.getPlayerId();
+          const playerId = await window.WTN.OneSignal.getPlayerId();
           alert("Success! Found Player ID: " + (playerId ? playerId : "NULL"));
 
           if (playerId) {
@@ -71,7 +71,7 @@ export function useWebToNative() {
     if (!isWebToNative || !window.WTN?.OneSignal) return;
 
     try {
-      const playerId = window.WTN.OneSignal.getPlayerId();
+      const playerId = await window.WTN.OneSignal.getPlayerId();
       if (playerId) {
         await api.request({
           method: 'DELETE',
