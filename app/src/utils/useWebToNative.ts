@@ -19,6 +19,9 @@ export function useWebToNative() {
 
   // Register device for push notifications
   const registerForPush = async () => {
+    // DEBUG: See if the app even recognizes WebToNative or OneSignal
+    alert("Debug Check -> isWebToNative: " + isWebToNative + " | hasOneSignal: " + !!window.WTN?.OneSignal);
+
     if (!isWebToNative || !window.WTN?.OneSignal) return;
 
     try {
