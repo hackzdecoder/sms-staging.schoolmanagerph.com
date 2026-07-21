@@ -6,7 +6,7 @@ declare global {
   interface Window {
     WTN?: {
       OneSignal?: {
-        getPlayerId: () => string;
+        getPlayerId: () => Promise<string>;
         setExternalUserId: (userId: string) => void;
         removeExternalUserId: () => void;
       };
@@ -19,45 +19,55 @@ export function useWebToNative() {
 
   // Register device for push notifications
   const registerForPush = async () => {
-    // DEBUG: See if the app even recognizes WebToNative or OneSignal
-    alert("Debug Check -> isWebToNative: " + isWebToNative + " | hasOneSignal: " + !!window.WTN?.OneSignal);
-
-    if (!isWebToNative || !window.WTN?.OneSignal) return;
-
-    try {
-      // Wait 3 seconds to ensure OneSignal SDK is fully loaded before checking
-      setTimeout(async () => {
-        // Get the device's OneSignal player ID from WebToNative
-        const playerId = window.WTN?.OneSignal?.getPlayerId();
+    let retries = 0;
+    
+    // WebToNative SDK takes time to inject into the app. We check every 1 second.
+    const checkWtn = setInterval(async () => {
+      if (typeof window !== 'undefined' && window.WTN?.OneSignal) {
+        clearInterval(checkWtn);
         
-        // DEBUG: Pop up an alert on the phone so we can see if it's actually working
-        alert("Debug: OneSignal Player ID is: " + (playerId ? playerId : "EMPTY/NULL"));
+        try {
+          const playerId = await window.WTN.OneSignal.getPlayerId();
 
-        if (playerId) {
-          // Send it to our backend to register the device
-          await api.post('/notifications/register-device', {
-            player_id: playerId,
-            platform: navigator.userAgent.toLowerCase().includes('android') ? 'android' : 
-                      navigator.userAgent.toLowerCase().includes('iphone') ? 'ios' : 'web'
-          });
+          if (playerId) {
+            await api.post('/notifications/register-device', {
+              player_id: playerId,
+              platform: navigator.userAgent.toLowerCase().includes('android') ? 'android' : 
+                        navigator.userAgent.toLowerCase().includes('iphone') ? 'ios' : 'web'
+            });
+          }
+        } catch (error) {
+          console.error('Error registering device:', error);
         }
-      }, 3000);
-    } catch (error) {
-      console.error('Error registering device for push notifications:', error);
-    }
+      } else {
+        retries++;
+        if (retries >= 10) {
+          clearInterval(checkWtn);
+          console.warn("WebToNative SDK never loaded after 10 seconds.");
+        }
+      }
+    }, 1000);
   };
 
   // Associate device with specific user for targeted push
   const setUserForPush = (userId: string) => {
-    if (!isWebToNative || !window.WTN?.OneSignal) return;
-    
-    try {
-      window.WTN.OneSignal.setExternalUserId(userId);
-      // Re-register device so backend knows the current user mapping
-      registerForPush();
-    } catch (error) {
-      console.error('Error setting external user ID for push:', error);
-    }
+    let retries = 0;
+    const checkWtn = setInterval(() => {
+      if (typeof window !== 'undefined' && window.WTN?.OneSignal) {
+        clearInterval(checkWtn);
+        try {
+          window.WTN.OneSignal.setExternalUserId(userId);
+        } catch (error) {
+          console.error('Error setting external user ID for push:', error);
+        }
+      } else {
+        retries++;
+        if (retries >= 10) {
+          clearInterval(checkWtn);
+          console.warn("WTN failed to load for setUserForPush after 10 seconds.");
+        }
+      }
+    }, 1000);
   };
 
   // Unregister user on logout
@@ -65,7 +75,7 @@ export function useWebToNative() {
     if (!isWebToNative || !window.WTN?.OneSignal) return;
 
     try {
-      const playerId = window.WTN.OneSignal.getPlayerId();
+      const playerId = await window.WTN.OneSignal.getPlayerId();
       if (playerId) {
         await api.request({
           method: 'DELETE',

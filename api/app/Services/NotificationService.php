@@ -9,9 +9,9 @@ use Illuminate\Support\Facades\DB;
 class NotificationService
 {
     /**
-     * Send a push notification via OneSignal to a specific user (using External User ID)
+     * Send a push notification via OneSignal to a specific user (targeting player IDs directly)
      *
-     * @param string $userId The user's external ID (user_id from users table)
+     * @param string $userId The user's ID
      * @param string $title Notification title
      * @param string $message Notification body
      * @param array $data Additional data payload
@@ -19,59 +19,25 @@ class NotificationService
      */
     public static function sendToUser(string $userId, string $title, string $message, array $data = [])
     {
-        // First check if the user has any active devices
-        $hasDevices = DB::connection('users_main')->table('push_devices')
+        // Get all active player IDs for this user directly from push_devices
+        $playerIds = DB::connection('users_main')->table('push_devices')
             ->where('user_id', $userId)
             ->where('is_active', true)
-            ->exists();
-
-        // If no devices, no need to call OneSignal
-        if (!$hasDevices) {
-            return false;
-        }
-
-        return self::sendOneSignal([$userId], $title, $message, $data);
-    }
-
-    /**
-     * Send a push notification to all admins of a school
-     * 
-     * @param string $schoolCode
-     * @param string $title
-     * @param string $message
-     * @param array $data
-     * @return bool
-     */
-    public static function sendToAdmins(string $schoolCode, string $title, string $message, array $data = [])
-    {
-        // Get all admin user IDs for this school (assuming gs_access_status or specific role identifies admins)
-        // Here we just broadcast to devices matching the school_code where they might be admins.
-        // Actually, we need to map to specific users. Let's find users with admin privileges.
-        // Assuming user records have an 'account_status' = 'admin' or similar, but the exact column
-        // depends on the schema. For now, we'll find all devices mapped to this school.
-        // Ideally, we query users where gs_access_status = 'active' and role = 'admin'.
-        // Wait, from User model, we have `gs_access_status`. We'll just fetch all user_ids 
-        // belonging to the school from push_devices, but wait, maybe not everyone should get it.
-        // If we want to send to all users in the school:
-        
-        $adminUserIds = DB::connection('users_main')->table('users')
-            ->where('school_code', $schoolCode)
-            // Need a way to filter admins. If not available, we skip for now and rely on specific user sending.
-            // Let's assume we can query them or we will just use sendToUser for now.
-            ->pluck('user_id')
+            ->pluck('player_id')
             ->toArray();
 
-        if (empty($adminUserIds)) {
+        // If no devices registered, skip
+        if (empty($playerIds)) {
             return false;
         }
 
-        return self::sendOneSignal($adminUserIds, $title, $message, $data);
+        return self::sendOneSignal($playerIds, $title, $message, $data);
     }
 
     /**
-     * Send to multiple external user IDs
+     * Send push notification directly to device player IDs
      */
-    private static function sendOneSignal(array $externalUserIds, string $title, string $message, array $data = [])
+    private static function sendOneSignal(array $playerIds, string $title, string $message, array $data = [])
     {
         $appId = env('ONESIGNAL_APP_ID');
         $apiKey = env('ONESIGNAL_REST_API_KEY');
@@ -87,8 +53,7 @@ class NotificationService
                 'Content-Type' => 'application/json; charset=utf-8',
             ])->post('https://onesignal.com/api/v1/notifications', [
                 'app_id' => $appId,
-                'include_external_user_ids' => $externalUserIds,
-                'channel_for_external_user_ids' => 'push',
+                'include_player_ids' => $playerIds,
                 'headings' => ['en' => $title],
                 'contents' => ['en' => $message],
                 'data' => $data,
