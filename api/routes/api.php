@@ -12,6 +12,7 @@ use App\Http\Controllers\api\attendance\AttendanceController;
 use App\Http\Controllers\api\messages\MessagesController;
 use App\Http\Controllers\api\auth\OtpController;
 use App\Http\Controllers\api\notifications\PushDeviceController;
+use App\Http\Controllers\api\school\SchoolController;
 
 /*
 |--------------------------------------------------------------------------
@@ -49,6 +50,8 @@ Route::get('/validate-reset-link', [PasswordController::class, 'validateResetLin
 Route::post('/check-account-status', [AuthenticationController::class, 'checkAccountStatus']);
 
 Route::post('/trademarks', [TrademarksController::class, 'getTrademarksInfo']);
+
+Route::get('/school-identification', [SchoolController::class, 'getSchool']);
 
 // ----------------------------
 // PROTECTED ROUTES
