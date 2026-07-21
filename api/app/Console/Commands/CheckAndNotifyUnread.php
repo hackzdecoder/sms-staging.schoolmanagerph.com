@@ -51,6 +51,13 @@ class CheckAndNotifyUnread extends Command
             }
 
             try {
+                // Fetch school name
+                $schoolRecord = DB::connection('idrs_school')
+                    ->table('school_id')
+                    ->where('school_code', $schoolCode)
+                    ->first();
+                $schoolName = $schoolRecord ? $schoolRecord->school_name : 'New Message';
+
                 // Connect to this school's database
                 $databaseName = DatabaseManager::generateDatabaseName($schoolCode);
                 $schoolDb = DatabaseManager::connect($databaseName);
@@ -62,7 +69,7 @@ class CheckAndNotifyUnread extends Command
                     $totalNotificationsSent += $this->checkAttendance($schoolDb, $userId, $schoolCode);
 
                     // --- Check for new unread MESSAGES ---
-                    $totalNotificationsSent += $this->checkMessages($schoolDb, $userId, $schoolCode);
+                    $totalNotificationsSent += $this->checkMessages($schoolDb, $userId, $schoolCode, $schoolName);
                 }
 
                 // Disconnect from school DB to free resources
@@ -160,7 +167,7 @@ class CheckAndNotifyUnread extends Command
     /**
      * Check for new unread messages and send notifications
      */
-    private function checkMessages($schoolDb, string $userId, string $schoolCode): int
+    private function checkMessages($schoolDb, string $userId, string $schoolCode, string $schoolName = 'New Message'): int
     {
         $sent = 0;
 
@@ -191,7 +198,7 @@ class CheckAndNotifyUnread extends Command
                 $subject = $record->subject ?? 'New Message';
                 $preview = $record->message ? substr($record->message, 0, 80) : '';
 
-                $title = '💬 New Message';
+                $title = '💬 ' . $schoolName;
                 $message = $subject;
                 if ($preview) {
                     $message .= ": {$preview}";
