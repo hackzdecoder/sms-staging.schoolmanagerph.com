@@ -15,6 +15,15 @@ class DatabaseManager
   const CONNECTION_CACHE_TTL = 3600;
 
   /**
+   * Connect directly from a school_code (generates DB name + connects in one call)
+   */
+  public static function connectBySchoolCode(string $schoolCode)
+  {
+    $databaseName = self::generateDatabaseName($schoolCode);
+    return self::connect($databaseName);
+  }
+
+  /**
    * Connect to a database dynamically based on user/school
    */
   public static function connect(string $databaseName = null)
